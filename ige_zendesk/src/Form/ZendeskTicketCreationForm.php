@@ -213,11 +213,11 @@ class ZendeskTicketCreationForm extends FormBase {
       'value' => $notes,
     ];
 
-    $zendesk_key = 'Cqfi15cqhA7ydjdENgTWWdqkaIkmCz7614lPPwtn';
+    $zendesk_key = 'test_zendesk_key';
     $zendesk_url = 'https://igerent.zendesk.com';
     $zendesk_user = 'operations@igerent.com';
     $json = json_encode($data);
-    $zendesk_key = 'Cqfi15cqhA7ydjdENgTWWdqkaIkmCz7614lPPwtn';
+    $zendesk_key = 'test_zendesk_key';
     $zendesk_url = 'https://igerent.zendesk.com';
     $zendesk_user = 'operations@igerent.com';
     $ch = curl_init();
