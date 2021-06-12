@@ -3,7 +3,6 @@
 namespace Drupal\ige_zendesk\Form;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\profile\Entity\Profile;
 
@@ -57,27 +56,25 @@ class OwnerDetailsForm extends FormBase {
     $target_user = $form_state->getValue('target_user');
     $end_user = $form_state->getValue('end_user');
     $order_count = $tracker_count = $request_count = 0;
-    //load all orders of target user
-    $orders = \Drupal::entityTypeManager()
-       ->getStorage('commerce_order')
+    $entity_type_manager = \Drupal::entityTypeManager();
+    // Load all orders of target user.
+    $orders = $entity_type_manager->getStorage('commerce_order')
        ->loadByProperties(['uid' => $target_user]);
     foreach($orders as $order) {
       $order->set('uid', $end_user);
       $order->save();
       $order_count++;
     }
-    //load all trackers of target user
-    $trackers = \Drupal::entityTypeManager()
-      ->getStorage('service_tracker')
+    // Load all trackers of target user.
+    $trackers = $entity_type_manager->getStorage('service_tracker')
       ->loadByProperties(['field_customer' => $target_user]);
     foreach($trackers as $tracker) {
       $tracker->set('field_customer', $end_user);
       $tracker->save();
       $tracker_count++;
     }
-    //load all pending payments of target user
-    $trademark_requests = \Drupal::entityTypeManager()
-      ->getStorage('trademark_request')
+    // Load all pending payments of target user.
+    $trademark_requests = $entity_type_manager->getStorage('trademark_request')
       ->loadByProperties(['uid' => $target_user]);
     foreach($trademark_requests as $trademark_request) {
       $trademark_request->set('uid', $end_user);
