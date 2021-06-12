@@ -1,0 +1,3 @@
+services:
+  ige_quote.quote_data:
+    class: Drupal\ige_quote\QuoteData

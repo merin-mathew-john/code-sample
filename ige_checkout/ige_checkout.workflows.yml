@@ -1,0 +1,31 @@
+
+ige_checkout_fulfillment_processing:
+  id: ige_checkout_fulfillment_processing
+  group: commerce_order
+  label: 'Igerent order processing'
+  states:
+    draft:
+      label: Draft
+    pending:
+      label: Pending
+    completed:
+      label: Completed
+    canceled:
+      label: Canceled
+  transitions:
+    place:
+      label: 'Place order'
+      from: [draft]
+      to: completed
+    cancel:
+      label: 'Cancel order'
+      from: [completed]
+      to:   canceled
+    complete:
+      label: 'Complete order'
+      from: [ pending ]
+      to: completed
+    pending:
+      label: 'Mark order as pending'
+      from: [ completed ]
+      to: pending

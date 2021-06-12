@@ -1,0 +1,17 @@
+ige_zendesk.create_ticket:
+  path: '/admin/zendesk/create'
+  defaults:
+    _form: '\Drupal\ige_zendesk\Form\ZendeskTicketCreationForm'
+    _title: 'Create Zendesk Ticket'
+  requirements:
+    _permission: 'access content'
+ige_zendesk.user_reassign:
+  path: '/admin/user/reassign'
+  defaults:
+    _form: '\Drupal\ige_zendesk\Form\OwnerDetailsForm'
+    _title: 'Reassign Orders, Trackers and Pending Payments'
+  requirements:
+    _permission: 'access content'
+  options:
+    _admin_route: FALSE
+

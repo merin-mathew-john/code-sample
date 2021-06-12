@@ -1,0 +1,34 @@
+services:
+  ige_checkout.checkout_helper:
+    class: Drupal\ige_checkout\Helper
+    arguments: ['@entity_type.manager', '@current_user', '@queue']
+  ige_checkout.order_complete:
+    class: Drupal\ige_checkout\EventSubscriber\OrderCompleteSubscriber
+    arguments: ['@entity_type.manager']
+    tags:
+    - { name: event_subscriber }
+  ige_checkout.stripe_metadata:
+    class: Drupal\ige_checkout\EventSubscriber\StripeMetadataSubscriber
+    arguments: ['@entity_type.manager']
+    tags:
+    - { name: event_subscriber }
+  ige_checkout.paypal_metadata:
+    class: Drupal\ige_checkout\EventSubscriber\PayPalEventSubscriber
+    tags:
+    - { name: event_subscriber }
+  ige_checkout.profile_label_alter:
+    class: '\Drupal\ige_checkout\EventSubscriber\ProfileLabelEventSubscriber'
+    tags:
+      - { name: 'event_subscriber' }
+
+  commerce_order.order_receipt_subscriber:
+    class: Drupal\ige_checkout\EventSubscriber\OrderReceiptSubscriber
+    arguments: ['@entity_type.manager', '@commerce_order.order_receipt_mail']
+    tags:
+      - { name: 'event_subscriber' }
+
+  ige_checkout.geolocate_user_subscriber:
+    class: Drupal\ige_checkout\EventSubscriber\GeoCurrency
+    tags:
+      - { name: event_subscriber }
+

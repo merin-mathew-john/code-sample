@@ -1,0 +1,22 @@
+<div class="clearfix checkout-sub-total">
+    <div class = "cart-total fl"> {{ 'Sub-total'|trans }} </div>
+    <div class = "total fr">
+      {{ sub_total }}
+    </div>
+  </div>
+{% if discount %}
+  <div class="clearfix checkout-sub-total">
+    <div class = "cart-total fl">{{ 'Discount'|trans }} </div>
+    <div class = "total fr">
+      {{ discount }}
+    </div>
+  </div>
+  {% if overall_total %}
+    <div class="clearfix checkout-sub-total">
+      <div class = "cart-total fl"> {{ 'TOTAL'|trans }}</div>
+      <div class = "total fr">
+        {{ overall_total }}
+      </div>
+    </div>
+  {% endif %}
+{% endif %}

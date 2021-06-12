@@ -1,0 +1,69 @@
+<div class = "invoice-template">
+  <div class = "header">
+    <div class = "logo ">
+      <img style="width: 80%;" class = 'logo' src = "{{ data.document_root }}/modules/custom/ige_checkout/invoice_images/logo.png">
+      <span <span class="invoice-text" style="margin-right: 0px;font-size: 30px;font-weight: bolder;color: #e08302;">Invoice</span>
+    </div>
+
+  </div>
+  <div style="padding: 25px;" class = "invoice-body">
+    <table style = "width: 100%">
+      <tr>
+        <td>
+          <span style="background-color: #e08302;font-weight: bold;color: #fff;padding: 4px; padding-bottom: 4px">Consultant: </span><span style="font-weight: bold;padding: 4px;">{{ data.consultant }} contact@igerent.com</span></td>
+        <td style="float: right;font-weight: bold;">Invoice #{{ data.number }} <br> {{ data.date}} </td>
+      </tr>
+    </table>
+    <div class="customer" style="margin-top: 3%;width: 40%;border: 1px solid #fab420;">
+      <div style="background-color: #e08302;font-weight: bold;color: #fff;padding: 4px;">Customer</div>
+        <div>
+         <table style="border: 1px solid #fab420; width: 100%;">
+          <tr>
+          {% if data.billing_profile %}
+            <td  style="padding: 4px;"> {{ drupal_entity('profile', data.billing_profile, 'default') }} </td></tr>
+          {% endif %}
+        </table>
+        </div>
+    </div>
+
+<div class="customer" style="margin-top: 3%;width: 40%;border: 1px solid #fab420;">
+    <div style="background-color: #e08302;font-weight: bold;color: #fff;padding: 4px;">Trademark Name</div>
+        <div>
+         <table style="border: 1px solid #fab420; width: 100%;">
+          {% for item in data.trademark_name %}
+            <tr>
+              <td style="padding: 4px;"> {{ item }} </td>
+            </tr>
+          {% endfor %}
+        </table>
+        </div>
+        </div>
+        <br>
+
+      <div class = "order_body"  style="margin-top: 10px">
+        <table style="border: 1px solid #fab420; width: 88%;">
+          <tr style="background-color: #e08302;font-weight: bold;color: #fff;padding: 4px;">
+            <td style="padding: 4px;">Service</td>
+            <td style="padding: 4px;">Amount</td>
+          </tr>
+           {% for item in data.line_items %}
+            <tr style = "border-bottom: 1px solid beige">
+              <td style="padding: 10px; border-right: 1px solid beige;">
+                {{ item.label }}
+              </td>
+              <td style="padding: 10px;">
+                {{ item.price }}
+              </td>
+            </tr>
+          {% endfor %}
+          <tr>
+            <td style="padding: 10px; border-right: 1px solid beige; text-align: right; font-weight: bold"> Total </td>
+            <td style="padding: 10px;"> {{ data.order_total }} </td>
+          </tr>
+        </table>
+      </div>
+  </div>
+  <div class = "bottom-invoice-footer" style="float: none;position: fixed; bottom: 35px;">
+    <img style="width: 108%" class = 'logo' src = "{{ data.document_root }}/modules/custom/ige_checkout/invoice_images/footer.png">
+  </div>
+</div>

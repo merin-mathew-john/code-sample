@@ -1,0 +1,16 @@
+ige_quote.quote_form:
+  path: '/admin/quote/add'
+  defaults:
+    _controller: '\Drupal\ige_quote\Controller\QuoteController::addQuote'
+    _title: 'Add Quote'
+  requirements:
+    _permission: 'add quote'
+  options:
+    _admin_route: FALSE
+ige_quote.quote_update:
+  path: '/ajax/quote/{quote_id}/update/{class_number}'
+  defaults:
+    _controller: '\Drupal\ige_quote\Controller\QuoteController::updateQuote'
+    _title: 'Update Quote'
+  requirements:
+    _permission: 'view any quote'

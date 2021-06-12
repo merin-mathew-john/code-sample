@@ -1,0 +1,5 @@
+name: IGE Quote
+type: module
+description: 'Quote related workflows'
+core: 8.x
+package: custom

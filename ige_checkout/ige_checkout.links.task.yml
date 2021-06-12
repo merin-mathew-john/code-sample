@@ -1,0 +1,5 @@
+ige_checkout.cart:
+  route_name: ige_checkout.cart
+  base_route: entity.user.canonical
+  title: Pending Payments
+  weight: 11

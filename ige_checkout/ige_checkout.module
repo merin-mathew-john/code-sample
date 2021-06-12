@@ -1,0 +1,654 @@
+<?php
+
+/**
+ * @file
+ * For handling custom functionalities of checkout module.
+ */
+
+use Drupal\Component\Utility\Unicode;
+use Drupal\Core\Url;
+use Drupal\Core\Link;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\profile\Entity\Profile;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\views\ViewExecutable;
+
+function ige_checkout_theme($existing, $type, $theme, $path) {
+  return [
+    'trademark_summary' => [
+      'variables' => [
+        'data' => [],
+      ],
+    ],
+    'field__paragraph__field_class_description' => [
+      'template' => 'field--paragraph--field-class-description',
+      'base hook' => 'field',
+      'render element' => 'elements',
+    ],
+    'commerce_order__admin' => [
+      'template' => 'commerce-order--admin',
+      'base hook' => 'commerce_order',
+      'render element' => 'elements',
+    ],
+    'total_summary' => [
+      'template' => 'total-summary',
+      'variables' => [
+        'sub_total' => [],
+        'discount' => [],
+        'overall_total' => [],
+      ],
+    ],
+    'commerce_order_invoice' => [
+      'template' => 'commerce-order-invoice',
+      'variables' => [
+        'data' => [],
+      ],
+    ],
+  ];
+}
+
+function ige_checkout_preprocess_field__paragraph__field_class_description(&$variables) {
+  $tid = $variables['element']['#object']->id();
+  $desc = $variables['items']['0']['content']['#context']['value'];
+  $term_desc = Unicode::substr($desc, 0, 70);
+  $term_desc_1 = $dots = $read_more = NULL;
+  if (strlen($desc) > 70) {
+    $term_desc_1 = '<span class = "class-popup-more-text" id="more-' . $tid . '">' . substr($desc, 70) . '</span>';
+    $read_more = '<a data-tid = "' . $tid . '" id="class-popup-more-button-' . $tid . '" class = "readmore-class class-desc" >' . t('Read more') . '</a>';
+    $dots = '<span class = "class-popup-readmore-dot" id="dots-' . $tid . '">...</span>';
+  }
+  $variables['output'] = $term_desc . $dots . ' ' . $term_desc_1 . $read_more;
+  $variables['class_number'] = $variables['element']['#object']->field_class_name->value;
+}
+
+function ige_checkout_preprocess_commerce_order__admin(&$variables) {
+  $trackers = [];
+  $order = $variables['elements']['#commerce_order'];
+  $items = $order->getItems();
+
+  $variables['invoice_link'] = Link::fromTextAndUrl(
+    t('Download Invoice'),
+    Url::fromRoute(
+      'ige_checkout.invoice',
+      ['commerce_order' => $order->id()]
+    )
+  );
+
+  foreach ($items as $item) {
+    foreach ($item->field_tracker->referencedEntities() as $item_tracker) {
+      $trackers[] = $item_tracker;
+    }
+  }
+  if (empty(array_filter($trackers))) {
+    $variables['create_tracker_links'][] = Link::fromTextAndUrl(
+      t('Create Service Tracker'),
+      Url::fromRoute(
+        'ige_checkout.create_tracker',
+        ['commerce_order' => $order->id()]
+      )
+    );
+    return;
+  }
+
+  foreach ($trackers as $tracker_item) {
+    $variables['create_tracker_links'][] = Link::fromTextAndUrl(
+      $tracker_item->title->value,
+      Url::fromRoute(
+        'entity.service_tracker.canonical',
+        ['service_tracker' => $tracker_item->id()]
+      )
+    );
+  }
+
+  if ($order->get('payment_gateway')->first() && $order->get('payment_gateway')->first()->entity) {
+    $variables['payment_method'] = $order->get('payment_gateway')->first()->entity->label();
+  }
+}
+
+function ige_checkout_preprocess_image_widget(&$variables) {
+    $element = $variables['element'];
+
+    $variables['attributes'] = array('class' => array('image-widget', 'js-form-managed-file', 'form-managed-file', 'clearfix'));
+
+    if (!empty($element['fids']['#value'])) {
+      $file = reset($element['#files']);
+      $element['file_' . $file->id()]['filename']['#suffix'] = ' <span class="file-size">(' . format_size($file->getSize()) . ')</span> ';
+      $file_variables = array(
+        'style_name' => $element['#preview_image_style'],
+        'uri' => $file->getFileUri(),
+      );
+
+      // Determine image dimensions.
+      if (isset($element['#value']['width']) && isset($element['#value']['height'])) {
+        $file_variables['width'] = $element['#value']['width'];
+        $file_variables['height'] = $element['#value']['height'];
+      } else {
+        $image = \Drupal::service('image.factory')->get($file->getFileUri());
+        if ($image->isValid()) {
+          $file_variables['width'] = $image->getWidth();
+          $file_variables['height'] = $image->getHeight();
+        }
+        else {
+          $file_variables['width'] = $file_variables['height'] = NULL;
+        }
+      }
+
+      $element['preview'] = array(
+        '#weight' => -10,
+        '#theme' => 'image_style',
+        '#width' => $file_variables['width'],
+        '#height' => $file_variables['height'],
+        '#style_name' => $file_variables['style_name'],
+        '#uri' => $file_variables['uri'],
+      );
+
+      // Store the dimensions in the form so the file doesn't have to be
+      // accessed again. This is important for remote files.
+      $element['width'] = array(
+        '#type' => 'hidden',
+        '#value' => $file_variables['width'],
+      );
+      $element['height'] = array(
+        '#type' => 'hidden',
+        '#value' => $file_variables['height'],
+      );
+    }
+
+    $variables['data'] = array();
+    foreach (\Drupal\Core\Render\Element::children($element) as $child) {
+      $variables['data'][$child] = $element[$child];
+    }
+}
+
+function ige_checkout_user_insert($account) {
+  $uid = $account->id();
+  $tempstore = \Drupal::service('user.private_tempstore')->get('ige_checkout');
+  $user_requests = $tempstore->get('trademark_requests');
+  if (!$user_requests) {
+    return;
+  }
+
+  $requests = \Drupal::entityManager()
+  ->getStorage('trademark_request')
+  ->loadMultiple($user_requests);
+  foreach ($requests as $request) {
+    $request->uid = $uid;
+    $request->author = $uid;
+    $request->save();
+  }
+
+  $tempstore->set('trademark_requests', []);
+}
+
+/**
+ * Implements hook_FORM_ID_alter().
+ */
+function ige_checkout_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id === "commerce_order_default_edit_form") {
+    $form['#attached']['library'][] = 'ige_checkout/admin_checkout';
+    $commerce_order = \Drupal::routeMatch()->getParameter('commerce_order');
+    $profile_options = [];
+
+    $profiles = \Drupal::entityQuery('profile')
+      ->condition('type', 'customer')
+      ->condition('field_user.entity.uid', $commerce_order->getCustomer()->id())
+      ->execute();
+
+    $orignal_options = $form['billing_profile']['widget']['0']['profile']['select_address']['#options'];
+    $profile_options['_new'] = $orignal_options['_new'];
+
+    foreach ($profiles as $profile_id) {
+      $profile = Profile::load($profile_id);
+      if (!in_array($profile->field_title->value, $profile_options)) {
+        $profile_options[$profile->id()] = $profile->field_title->value;
+      }
+      $profile->uid = $commerce_order->getCustomer()->id();
+      $profile->save();
+    }
+
+    $form['billing_profile']['widget']['0']['profile']['select_address']['#options'] = ['' => 'Select'] + $profile_options;
+    $form['billing_profile']['widget']['0']['profile']['select_address']['#default_value'] = '';
+    if ($commerce_order->getBillingProfile()) {
+      $form['billing_profile']['widget']['0']['profile']['select_address']['#default_value'] = $commerce_order->getBillingProfile()->id();
+    }
+    else {
+      $form['billing_profile']['widget']['0']['profile']['select_address']['#attributes']['class'][] = 'ige-select-address';
+    }
+
+  }
+
+  $checkout_helper = \Drupal::service('ige_checkout.checkout_helper');
+  if (isset($form['account']['mail']['#description'])) {
+    $form['account']['mail']['#description'] = t('Enter a valid email address. All emails regarding your orders will be sent to this email address. It is not made public and will only be used to send you news and notifications regarding the services you ordered and iGERENT’s services.');
+  }
+
+  if ($form_id == "trademark_request_trademark_request_edit_form") {
+    $trademark_request = \Drupal::routeMatch()->getParameter('trademark_request');
+
+    if ($trademark_request->field_admin_added->value) {
+      $data = $checkout_helper->getAdditionalTrademarkRequestData([$trademark_request]);
+    }
+    else {
+      $data = $checkout_helper->getTrademarkRequestData([$trademark_request]);
+      if ($data[$trademark_request->id()]['price_object']) {
+        $form['field_price']['widget']['0']['#default_value'] = $data[$trademark_request->id()]['price_object']->toArray();
+        $form['field_price']['widget']['0']['#disabled'] = TRUE;
+      }
+    }
+  }
+  if ($form_id == 'user_login_form' || $form_id == "user_login_block") {
+    array_unshift($form['#submit'], 'ige_checkout_user_login_submit');
+  }
+
+  if ($form_id != "service_tracker_service_tracker_edit_form") {
+    return;
+  }
+
+  $service_tracker = \Drupal::routeMatch()->getParameter('service_tracker');
+  $service_type = $service_tracker->field_service_type->value;
+  if ($service_type === "search") {
+    $form['#fieldgroups']['group_important_dates']->format_type = 'hidden';
+    foreach ($form['#group_children'] as $field => $group) {
+      if ($group == 'group_important_dates') {
+        $form[$field]['#access'] = FALSE;
+        $form[$field]['#disabled'] = TRUE;
+      }
+    }
+  }
+
+  if ($service_type === "application") {
+    $form['#fieldgroups']['group_search_results']->format_type = 'hidden';
+    foreach ($form['#group_children'] as $field => $group) {
+      if ($group == 'group_search_results') {
+        $form[$field]['#access'] = FALSE;
+        $form[$field]['#disabled'] = TRUE;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_FORM_ID_alter().
+ */
+function ige_checkout_form_user_register_form_alter(&$form, &$form_state, $form_id) {
+  $route_name = Drupal::routeMatch()->getRouteName();
+  $form['actions']['submit']['#submit'][] = 'ige_checkout_user_register_redirect';
+  if ($route_name === 'ige_checkout.trademark_checkout_owner') {
+    $form['actions']['submit']['#submit'][] = 'ige_checkout_user_register_submit_handler';
+  }
+}
+
+function ige_checkout_user_register_submit_handler($form, &$form_state) {
+  $form_state->setRedirect(
+    'ige_checkout.trademark_checkout_owner',
+    [
+      'trademark_request' => \Drupal::routeMatch()->getParameter('trademark_request')
+    ]
+  );
+}
+
+function ige_checkout_user_register_redirect($form, &$form_state) {
+  $form_state->setRedirect('entity.node.canonical', ['node' => 79]);
+}
+
+/**
+ * Implements hook_views_data_alter().
+ */
+function ige_checkout_views_data_alter(array &$data) {
+  $data['commerce_order_item']['order_item_class_data'] = [
+    'title' => t('Order Item Class Data'),
+    'field' => [
+      'title' => t('Order Item Class Data'),
+      'help' => t('Displays the class data of the order item.'),
+      'id' => 'order_items_class_data',
+    ],
+  ];
+  $data['trademark_request']['ige_checkout_trademark_price'] = [
+    'title' => t('Trademark Price'),
+    'field' => [
+      'title' => t('Trademark Price'),
+      'help' => t('The trademark price.'),
+      'id' => 'ige_checkout_trademark_price',
+    ],
+  ];
+  $data['commerce_order']['ige_checkout_trademark_text'] = [
+    'title' => t('Trademark Text'),
+    'field' => [
+      'title' => t('Trademark Text'),
+      'help' => t('The trademark text.'),
+      'id' => 'ige_checkout_trademark_text',
+    ],
+  ];
+  $data['commerce_order_item']['ige_checkout_trademark_type'] = [
+    'title' => t('Trademark Type'),
+    'field' => [
+      'title' => t('Trademark Type'),
+      'help' => t('The trademark type.'),
+      'id' => 'ige_checkout_trademark_type',
+    ],
+
+  ];
+  $data['commerce_order']['ige_checkout_trademark_text_filter'] = [
+    'title' => t('Trademark Text Filter'),
+    'filter' => [
+      'title' => t('Trademark Text'),
+      'help' => t('Trademark text filter.'),
+      'field' => 'order_id',
+      'id' => 'ige_checkout_trademark_text_filter'
+    ],
+  ];
+}
+
+/**
+ * Impememnts hook_node_presave().
+ */
+function ige_checkout_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
+  if ($entity->getEntityType()->id() != "service_tracker") {
+    return;
+  }
+
+  $country_code = NULL;
+  $application_period = $renewal_period = 0;
+  $status_override = $entity->field_override_status->value;
+  $deadline_override = $entity->field_override_deadline->value;
+  $renewal_override = $entity->field_override_renewal_date->value;
+  $tracker_type = $entity->field_service_type->value;
+  $upload_date = $entity->field_upload_date->value;
+  $filing_date = $entity->field_filing_date->value;
+  $registration_date = $entity->field_registration_date->value;
+
+  // Saving attorney order code.
+  $attorney = $entity->field_attorney->entity;
+  $order = $entity->field_order->entity;
+  if ($order) {
+    $trackers = \Drupal::entityTypeManager()
+      ->getStorage('service_tracker')
+      ->getQuery()
+      ->condition('field_order', $order->id())
+      ->execute();
+    $trackers = array_values($trackers);
+  }
+
+  if (!empty($attorney)) {
+    $provider_code = $attorney->field_provider_code->value;
+
+    if ($entity->field_country->entity) {
+      $country_code = $entity->field_country->entity->field_country_code->value;
+    }
+    $attorney_order_code = $country_code . $provider_code;
+    if ($entity->field_order->entity) {
+      $order_id = $entity->field_order->entity->id();
+      $attorney_order_code = $country_code . $provider_code . $order_id;
+    }
+    if (count($trackers) > 1) {
+      foreach ($trackers as $key => $tracker_id) {
+        if ($tracker_id == $entity->id()) {
+          $alpha_poisition = chr(substr("000".($key+65),-3));
+          $attorney_order_code = $country_code . $provider_code . $order_id . $alpha_poisition;
+        }
+      }
+    }
+    $entity->set('field_attorney_order_code', $attorney_order_code);
+  }
+  if ($upload_date && $tracker_type === "search" && !($status_override)) {
+    $entity->set('field_service_status', 'completed');
+  }
+
+  if ($tracker_type === "application") {
+    if ($entity->field_country->first() && $entity->field_country->first()->entity) {
+      $variations = $entity->field_country->first()->entity->getVariations();
+      foreach ($variations as $variation) {
+        $renewal_starting = $variation->field_renewal_starting_from->value;
+        if ($variation->field_time_period->value) {
+          $application_period = $variation->field_time_period->value;
+          $renewal_period = $variation->field_renewal_period->value;
+        }
+      }
+      if ($filing_date && !($status_override) ) {
+        $entity->set('field_service_status', 'filed');
+      }
+
+      if ($filing_date && !($registration_date) ) {
+        $application_period = ' +' . $application_period . ' days';
+        $filing_date = strtotime($filing_date);
+        $deadline_date = date("Y-m-d",strtotime($application_period, $filing_date));
+        if (!$deadline_override) {
+          $entity->set('field_deadline_date', $deadline_date);
+        }
+        if (!$status_override) {
+          $entity->set('field_service_status', 'filed');
+        }
+      }
+
+      if ($registration_date && !($status_override) ) {
+        $entity->set('field_service_status', 'registered');
+      }
+
+      if ($registration_date) {
+        $renewal_period = ' +' . $renewal_period . ' years';
+        $registration_date = strtotime($registration_date);
+
+        $renewal_date = date("Y-m-d", strtotime($renewal_period, $registration_date));
+        if ($renewal_starting == "application") {
+          $filing_date = strtotime($filing_date);
+          $renewal_date = date("Y-m-d", strtotime($renewal_period, $filing_date));
+        }
+        if (!$renewal_override) {
+          $entity->set('field_renewal_date', $renewal_date);
+        }
+      }
+    }
+  }
+}
+
+function ige_checkout_user_login_submit(&$form, $form_state) {
+  $name = $form_state->getValues()['name'];
+  $users = \Drupal::entityTypeManager()
+    ->getStorage('user')
+    ->loadByProperties([
+    'name' => $name,
+  ]);
+  $user = reset($users);
+  $uid = $user->id();
+
+  $currency_helper = \Drupal::service('commerce_currency_resolver.currency_helper');
+  $cookie_name = $currency_helper->getCookieName();
+  $cookies = \Drupal::request()->cookies;
+
+  if($user->field_preferred_currency->value) {
+    setrawcookie(
+      $currency_helper->getCookieName(),
+      $user->field_preferred_currency->value,
+      \Drupal::time()->getRequestTime() + 86400, '/'
+    );
+  }
+
+  $tempstore = \Drupal::service('user.private_tempstore')->get('ige_checkout');
+  $user_requests = $tempstore->get('trademark_requests');
+
+  if (!$user_requests) {
+    return;
+  }
+
+  $requests = \Drupal::entityManager()
+  ->getStorage('trademark_request')
+  ->loadMultiple($user_requests);
+
+  foreach ($requests as $request) {
+    $request->uid = $uid;
+    $request->author = $uid;
+    $request->save();
+  }
+
+  $tempstore->set('trademark_requests', []);
+}
+
+/**
+ * Implements hook_menu_local_tasks_alter().
+ */
+function ige_checkout_menu_local_tasks_alter(&$data, $route_name) {
+  // Change title for user profile's tabs.
+  foreach ($data['tabs'] as $key => &$tabs) {
+    foreach ($tabs as &$tab) {
+      $route_name = $tab['#link']['url']->getRouteName();
+      if ($route_name == 'entity.user.canonical') {
+        $tab['#link']['title'] = t('My Profile');
+      }
+      elseif ($route_name == 'entity.user.edit_form') {
+        $tab['#link']['title'] = t('Edit Profile');
+      }
+    }
+  }
+}
+/**
+ * Implements hook_local_tasks_alter().
+ */
+function ige_checkout_local_tasks_alter(&$local_tasks) {
+  unset($local_tasks['commerce_order.address_book.overview']);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * Alters the artist options on artwork pages.
+ */
+function ige_checkout_form_views_exposed_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // If not the view we are looking, move on
+  if ($form['#id'] != 'views-exposed-form-detailed-commerce-orders-page-1') {
+    return FALSE;
+  }
+
+  $order_item_ids = \Drupal::entityTypeManager()
+    ->getStorage('commerce_order_item')
+    ->getQuery()->execute();
+
+  // If there are no nodes, move on
+  if (!$order_item_ids) {
+    return FALSE;
+  }
+
+  // Start building out the options for our select list
+  $options = [];
+  $order_items = \Drupal::entityTypeManager()
+    ->getStorage('commerce_order_item')
+    ->loadMultiple($order_item_ids);
+
+  // Push titles into select list
+  foreach ($order_items as $order_item) {
+    if ($order_item->field_trademark_text->value) {
+      $options[$order_item->id()] = $order_item->field_trademark_text->value;
+    }
+  }
+
+  // Start building out our new form element
+  $order_items_field = 'order_items_target_id';
+  $form[$order_items_field]['#type'] = 'select';
+  $form[$order_items_field]['#multiple'] = FALSE;
+
+  // Specify the empty option for our select list
+  $form[$order_items_field]['#empty_option'] = t('Trademark Text');
+
+  // Add the $options from above to our select list
+  $form[$order_items_field]['#options'] = $options;
+
+  unset($form[$order_items_field]['#size']);
+}
+
+function ige_checkout_page_attachments_alter(array &$attachments) {
+  $route_name = \Drupal::routeMatch()->getRouteName();
+  $current_path = \Drupal::service('path.current')->getPath();
+  $page = \Drupal::request()->getRequestUri();
+  $host = \Drupal::request()->getSchemeAndHttpHost();
+  if ($page == "/home" || $page == "/es/home" || $page == "/fr/home") {
+    $attachments['#attached']['html_head_link'][] = [
+      [
+        'rel' => 'alternate',
+        'hreflang' => 'es',
+        'href' => $host . '/es/home',
+      ],
+      TRUE,
+    ];
+
+    $attachments['#attached']['html_head_link'][] = [
+      [
+        'rel' => 'alternate',
+        'hreflang' => 'fr',
+        'href' => $host . '/fr/home',
+      ],
+      TRUE,
+    ];
+
+    $attachments['#attached']['html_head_link'][] = [
+      [
+        'rel' => 'alternate',
+        'hreflang' => 'en',
+        'href' => $host . "/home",
+      ],
+      TRUE,
+    ];
+  }
+
+  elseif ($route_name == "entity.node.canonical" && $current_path == "/node/79") {
+    $lang = \Drupal::languageManager()->getCurrentLanguage()->getId();
+    $attachments['#attached']['html_head_link'][] = [
+      [
+        'rel' => 'alternate',
+        'hreflang' => 'es',
+        'href' => $host . '/es',
+      ],
+      TRUE,
+    ];
+
+    $attachments['#attached']['html_head_link'][] = [
+      [
+        'rel' => 'alternate',
+        'hreflang' => 'fr',
+        'href' => $host . '/fr',
+      ],
+      TRUE,
+    ];
+
+    $attachments['#attached']['html_head_link'][] = [
+      [
+        'rel' => 'alternate',
+        'hreflang' => 'en',
+        'href' => $host,
+      ],
+     TRUE,
+    ];
+  }
+}
+
+/**
+ * Implements hook_entity_operation_alter().
+ */
+function ige_checkout_entity_operation_alter(
+  array &$operations,
+  EntityInterface $entity
+) {
+  if ($entity->getEntityTypeId() == 'service_tracker') {
+    $operations['edit']['url'] = Url::fromRoute('entity.service_tracker.edit_form', ['service_tracker' => $entity->id()]);
+  }
+}
+
+/**
+ * Implements hook_views_post_execute().
+ */
+function ige_checkout_views_post_execute(ViewExecutable $view) {
+  if ($view->id() != "detailed_commerce_order_view") {
+    return;
+  }
+
+  if ($view->getQuery()->distinct) {
+    $row_ids = [];
+    $distinct_results = [];
+    foreach($view->result as $row) {
+      $row_id = $row->_entity->id();
+      if (!in_array($row_id, $row_ids)) {
+         $row_ids[] = $row_id;
+         $distinct_results[] = $row;
+      }
+    }
+   $view->result = $distinct_results;
+  }
+}

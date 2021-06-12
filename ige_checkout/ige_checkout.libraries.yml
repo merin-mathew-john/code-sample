@@ -1,0 +1,14 @@
+trademark:
+  version: VERSION
+  js:
+    js/checkout.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+admin_checkout:
+  version: VERSION
+  js:
+    js/admin_checkout.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal

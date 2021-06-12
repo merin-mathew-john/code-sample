@@ -1,0 +1,12 @@
+entity.commerce_order.additional_service:
+  route_name: ige_checkout.additional_service_form
+  title: 'Create a new additional service order'
+  appears_on:
+    - entity.commerce_order.collection
+
+entity.commerce_order.add_page:
+  route_name: ige_checkout.trademark_checkout
+  title: 'Create a new order'
+  appears_on:
+    - entity.commerce_order.collection
+

@@ -1,0 +1,143 @@
+ige_checkout.trademark_checkout:
+  path: '/trademark'
+  defaults:
+    _form: '\Drupal\ige_checkout\Form\CheckoutForm'
+    _title: 'Apply for a Trademark'
+  requirements:
+    _permission: 'access content'
+
+ige_checkout.invoice:
+  path: '/order/{commerce_order}/invoice/download'
+  defaults:
+    _controller: '\Drupal\ige_checkout\Controller\CheckoutController::downloadInvoice'
+    _title: 'Invoice Download'
+  requirements:
+    _custom_access: '\Drupal\ige_checkout\Controller\CheckoutController::accessOrder'
+
+ige_checkout.additional_service_form:
+  path: '/additional-service-item/add'
+  defaults:
+    _form: '\Drupal\ige_checkout\Form\AdditionalServicesForm'
+    _title: 'Additional services form'
+  requirements:
+    _permission: 'access commerce administration pages'
+
+ige_checkout.trademark_edit:
+  path: '/trademark/{id}/edit/{order_id}'
+  defaults:
+    _form: '\Drupal\ige_checkout\Form\CheckoutForm'
+    _title: 'Edit Trademark Request'
+    order_id: NULL
+  requirements:
+    _custom_access: '\Drupal\ige_checkout\Controller\CheckoutController::accessRequest'
+
+ige_checkout.trademark_delete:
+  path: '/trademark/{id}/delete/{order_id}'
+  defaults:
+    _form: '\Drupal\ige_checkout\Form\ConfirmDeleteForm'
+    _title: 'Delete Trademark Request'
+    order_id: NULL
+  requirements:
+    _custom_access: '\Drupal\ige_checkout\Controller\CheckoutController::accessRequest'
+
+ige_checkout.trademark_class_search:
+  path: '/ajax/class/search'
+  defaults:
+    _controller: '\Drupal\ige_checkout\Controller\CheckoutController::classSearch'
+    _title: 'Search Class'
+  requirements:
+    _permission: 'access content'
+
+ige_checkout.trademark_summary:
+  path: '/ajax/trademark/summary'
+  defaults:
+    _controller: '\Drupal\ige_checkout\Controller\CheckoutController::trademarkSummary'
+    _title: 'Trademark Summary'
+  requirements:
+    _permission: 'access content'
+
+ige_checkout.order_billing:
+  path: '/order/{id}/billing/{pid}'
+  defaults:
+    _controller: '\Drupal\ige_checkout\Controller\CheckoutController::setBilling'
+    _title: 'Set Order Billing'
+  requirements:
+    _permission: 'access content'
+
+ige_checkout.trademark_checkout_owner:
+  path: '/trademark/{trademark_request}/owner'
+  defaults:
+    _form: '\Drupal\ige_checkout\Form\CheckoutOwnerForm'
+    _title: 'Trademark Owner Details'
+  requirements:
+    _permission: 'access content'
+
+ige_checkout.trademark_pending_payments:
+  path: '/trademark/pending-payments'
+  defaults:
+    _form: '\Drupal\ige_checkout\Form\PendingPaymentsFrom'
+    _title: 'My Pending Payments'
+  requirements:
+    _permission: 'access content'
+
+ige_checkout.add_item_to_order:
+  path: '/trademark/add/{commerce_order}/{trademark_request}'
+  defaults:
+    _controller: '\Drupal\ige_checkout\Controller\CheckoutController::addRequest'
+    _title: 'Add order item'
+  requirements:
+    _permission: 'access content'
+
+ige_checkout.remove_item_to_order:
+  path: '/trademark/remove/{commerce_order}/{trademark_request}'
+  defaults:
+    _controller: '\Drupal\ige_checkout\Controller\CheckoutController::removeRequest'
+    _title: 'Remove order item'
+  requirements:
+    _permission: 'access content'
+
+ige_checkout.cart:
+  path: '/user/{user}/pending-payments'
+  defaults:
+    _form: '\Drupal\ige_checkout\Form\CartForm'
+    _title: 'Shopping Cart'
+  requirements:
+    _custom_access: '\Drupal\ige_checkout\Controller\CheckoutController::accessUser'
+  options:
+    parameters:
+      user:
+        type: entity:user
+
+ige_checkout.user_cart:
+  path: '/user/pending-payments'
+  defaults:
+    defaults:
+    _controller: '\Drupal\ige_checkout\Controller\CheckoutController::pendingPayments'
+    _title: 'Pending Payments'
+  requirements:
+    _permission: 'access content'
+
+ige_checkout.user_portfolio:
+  path: '/user/my-portfolio'
+  defaults:
+    defaults:
+    _controller: '\Drupal\ige_checkout\Controller\CheckoutController::myPortfolio'
+    _title: 'My Portfolio'
+  requirements:
+    _permission: 'access content'
+
+ige_checkout.create_tracker:
+  path: '/admin/commerce/{commerce_order}/create-tracker'
+  defaults:
+    _controller: '\Drupal\ige_checkout\Controller\CheckoutController::createTracker'
+    _title: 'Create Tracker'
+  requirements:
+    _permission: 'access commerce administration pages'
+
+ige_checkout.user_order:
+  path: '/user/orders'
+  defaults:
+    _controller: '\Drupal\ige_checkout\Controller\CheckoutController::myOrders'
+    _title: 'My Orders'
+  requirements:
+    _permission: 'access content'

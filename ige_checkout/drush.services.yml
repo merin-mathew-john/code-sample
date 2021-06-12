@@ -1,0 +1,5 @@
+services:
+  ige_checkout.commands:
+    class: \Drupal\ige_checkout\Commands\DrushCommands\ProfileUpdate
+    tags:
+      - { name: drush.command }

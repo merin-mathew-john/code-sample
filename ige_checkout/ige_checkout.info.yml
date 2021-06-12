@@ -1,0 +1,5 @@
+name: IGE Checkout
+type: module
+description: 'Qoute tool Checkout process'
+core: 8.x
+package: custom

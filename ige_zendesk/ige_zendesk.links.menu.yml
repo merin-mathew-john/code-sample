@@ -1,0 +1,6 @@
+ige_zendesk.reassign:
+  title: 'Reassign'
+  description: 'Reassign Users orders,trackers and pending payments.'
+  parent: entity.user.collection
+  route_name: ige_zendesk.user_reassign
+  weight: 100

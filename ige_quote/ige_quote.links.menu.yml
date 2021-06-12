@@ -1,0 +1,6 @@
+ige_quote.quote_form:
+  title: Add Quote
+  description: 'Add quotes.'
+  route_name: ige_quote.quote_form
+  weight: 9
+  parent: system.admin

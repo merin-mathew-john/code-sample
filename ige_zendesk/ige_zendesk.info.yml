@@ -1,0 +1,5 @@
+name: IGE Zendesk
+type: module
+description: 'Zendesk integrations with igerent trackers'
+core: 8.x
+package: custom
